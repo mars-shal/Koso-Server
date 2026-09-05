@@ -3,4 +3,6 @@ export class UpdateClientDto {
   first_name?: string;
   last_name?: string;
   phone?: string;
+  type?: string;
+  status?: string;
 }

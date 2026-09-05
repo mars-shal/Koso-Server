@@ -16,6 +16,8 @@ export class ClientsService {
           first_name: dto.first_name,
           last_name: dto.last_name,
           phone: dto.phone,
+          type: dto.type,
+          status: dto.status,
         });
 
       if (error) {
@@ -85,6 +87,8 @@ export class ClientsService {
           first_name: dto.first_name,
           last_name: dto.last_name,
           phone: dto.phone,
+          type: dto.type,
+          status: dto.status,
         });
 
       if (error) {
