@@ -1,6 +1,6 @@
 # Koso-Server
 
-NestJS backend for Koso — client & project management, meetings, documents, milestones, payment links & transactions, AI-powered PRD/pricing, and resume building.
+NestJS backend for Koso — client & project management, meetings, documents, milestones, payments (Paystack), AI-powered PRD/pricing, and resume building.
 
 ## Setup
 
