@@ -426,97 +426,14 @@ DELETE /milestones/:id
 
 ---
 
-## Payments (Paystack API)
+## Payments
 
-### Create payment page (donations / one-time)
-```
-POST /payments/page
-```
-**Body:**
-```json
-{
-  "name": "Support Koso",
-  "amount": 5000,
-  "description": "Donate to the project"
-}
-```
-**Response:** `{ "success": true, "slug": "support-koso-abc123" }`
+The Paystack integration has been **removed**. All payment data lives in Koso's own Supabase tables and is managed through the Koso API:
 
----
+- **`/payment-links`** — create, list, get, update and delete payment links
+- **`/transactions`** — create, list, get, update and delete payment transactions
 
-### Create payment request (invoice)
-```
-POST /payments/request
-```
-**Body:**
-```json
-{
-  "amount": 250000,
-  "description": "50% deposit for Koso App",
-  "customerId": "paystack-customer-id",
-  "dueDate": "2025-04-01",
-  "sendNotification": true
-}
-```
-**Response:** `{ "success": true, "data": { ... } }`
-
----
-
-### Create customer
-```
-POST /payments/customer
-```
-**Body:**
-```json
-{
-  "email": "client@example.com",
-  "first_name": "Marshall",
-  "last_name": "Nwosu",
-  "phone": "+2348012345678"
-}
-```
-**Response:** `{ "success": true, "data": { ... } }`
-
----
-
-### List customers
-```
-GET /payments/customers
-```
-**Response:** `{ data: [ { id, email, first_name, last_name, ... } ] }`
-
----
-
-### List transactions
-```
-GET /payments/transactions
-```
-**Response:** `{ data: [ { id, amount, status, reference, ... } ] }`
-
----
-
-### Get one transaction
-```
-GET /payments/transactions/:id
-```
-**Response:** `{ data: { id, amount, status, reference, ... } }`
-
----
-
-### Paystack webhook
-```
-POST /payments/webhook
-```
-Set this as your webhook URL in the [Paystack Dashboard](https://dashboard.paystack.com/#/settings/developer) (Settings → API Keys & Webhooks → Webhook URL).
-
-- Verifies the `x-paystack-signature` header (HMAC-SHA512 of the raw body, signed with `PAYSTACK_SECRET_KEY`). Invalid signatures return `401`.
-- Responds to `charge.success` → records/sets a `Transactions` row to `Succeeded`, and `charge.failed` → `Failed`. Updates are idempotent by `gateway_ref` (reference), so Paystack retries won't duplicate rows.
-- Amounts are converted from kobo/paise to the base unit (`amount / 100`).
-
-**Response (verify succeeded):**
-```json
-{ "success": true, "reference": "paystack-ref-abc123", "status": "Succeeded" }
-```
+See the sections below for the exact endpoints, fields and filters.
 
 ---
 
@@ -536,7 +453,7 @@ POST /payment-links
   "amount": 250000,
   "currency": "NGN",
   "status": "Active",
-  "url": "https://paystack.com/pay/abc123"
+  "url": "https://koso.app/pay/abc123"
 }
 ```
 **`type` values:** `"Invoice"` | `"Donation"`
@@ -606,12 +523,12 @@ POST /transactions
   "currency": "NGN",
   "date": "2025-03-15T12:00:00Z",
   "status": "Succeeded",
-  "gatewayRef": "paystack-ref-abc123"
+  "gatewayRef": "ref-abc123"
 }
 ```
 **`status` values:** `"Succeeded"` | `"Pending"` | `"Failed"` | `"Refunded"`
 
-**Response:** `{ "success": true, "gatewayRef": "paystack-ref-abc123" }`
+**Response:** `{ "success": true, "gatewayRef": "ref-abc123" }`
 
 ---
 
@@ -786,7 +703,6 @@ POST /resume/score
 | `/milestones` | `Milestones` | `id`, `project_id`, `name`, `due_date`, `status`, `description` |
 | `/payment-links` | `PaymentLinks` | `id`, `type`, `linked_client_id`, `linked_project_id`, `linked_label`, `amount`, `url` |
 | `/transactions` | `Transactions` | `id`, `payment_link_id`, `payer_name`, `amount`, `status`, `gateway_ref` |
-| `/payments/*` | Paystack API | External — not stored in Supabase |
 | `/documents/upload` | `Documents` + Supabase Storage | file in bucket `documents` at `{client_id}/{fileName}`, row with `file_url` |
 | `/ai/prd` | `Milestones` (optional context) | Google GenAI — generates markdown PRD |
 | `/ai/pricing` | — | Google GenAI — returns price range quote |
