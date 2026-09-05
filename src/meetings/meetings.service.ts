@@ -10,7 +10,7 @@ export class MeetingsService {
   async create(dto: CreateMeetingDto) {
     try {
       const { error } = await supabase
-        .from('Meetings')
+        .from('meetings')
         .upsert({
           client_id: dto.clientId,
           project_id: dto.projectId,
@@ -36,7 +36,7 @@ export class MeetingsService {
   async findAll() {
     try {
       const { data, error } = await supabase
-        .from('Meetings')
+        .from('meetings')
         .select();
 
       if (error) {
@@ -55,7 +55,7 @@ export class MeetingsService {
   async findOne(id: string) {
     try {
       const { data, error } = await supabase
-        .from('Meetings')
+        .from('meetings')
         .select()
         .eq('id', id)
         .single();
@@ -76,7 +76,7 @@ export class MeetingsService {
   async findByClientId(clientId: string) {
     try {
       const { data, error } = await supabase
-        .from('Meetings')
+        .from('meetings')
         .select()
         .eq('client_id', clientId);
 
@@ -96,7 +96,7 @@ export class MeetingsService {
   async update(id: string, dto: UpdateMeetingDto) {
     try {
       const { error } = await supabase
-        .from('Meetings')
+        .from('meetings')
         .upsert({
           id,
           client_id: dto.clientId,
@@ -123,7 +123,7 @@ export class MeetingsService {
   async remove(id: string) {
     try {
       const { error } = await supabase
-        .from('Meetings')
+        .from('meetings')
         .delete()
         .eq('id', id);
 

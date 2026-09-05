@@ -73,7 +73,7 @@ export class PaymentsService {
       typeof data.metadata?.paymentLinkId === 'string' ? data.metadata.paymentLinkId : null;
 
     const { data: existing } = await supabase
-      .from('Transactions')
+      .from('transactions')
       .select('id')
       .eq('gateway_ref', gatewayRef)
       .maybeSingle();
@@ -81,11 +81,11 @@ export class PaymentsService {
     let error: { message: string } | null;
     if (existing?.id) {
       ({ error } = await supabase
-        .from('Transactions')
+        .from('transactions')
         .update({ status, amount, date, payer_name: payerName, payer_email: data.customer?.email })
         .eq('id', existing.id));
     } else {
-      ({ error } = await supabase.from('Transactions').insert({
+      ({ error } = await supabase.from('transactions').insert({
         payment_link_id: paymentLinkId,
         payer_name: payerName,
         payer_email: data.customer?.email,

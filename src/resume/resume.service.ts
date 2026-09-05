@@ -64,7 +64,7 @@ Output the resume in clean markdown. Do not invent factual numbers — only use 
   }
 
   private async fetchProjects(): Promise<Record<string, unknown>[]> {
-    const { data, error } = await supabase.from('Projects').select();
+    const { data, error } = await supabase.from('projects').select();
 
     if (error) {
       this.logger.error(`Fetch projects for resume failed: ${error.message}`);

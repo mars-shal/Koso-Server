@@ -10,7 +10,7 @@ export class ProjectsService {
   async create(dto: CreateProjectDto) {
     try {
       const { error } = await supabase
-        .from('Projects')
+        .from('projects')
         .upsert({
           client_id: dto.clientId,
           name: dto.name,
@@ -39,7 +39,7 @@ export class ProjectsService {
   async findAll() {
     try {
       const { data, error } = await supabase
-        .from('Projects')
+        .from('projects')
         .select();
 
       if (error) {
@@ -58,7 +58,7 @@ export class ProjectsService {
   async findOne(id: string) {
     try {
       const { data, error } = await supabase
-        .from('Projects')
+        .from('projects')
         .select()
         .eq('id', id)
         .single();
@@ -79,7 +79,7 @@ export class ProjectsService {
   async findByClientId(clientId: string) {
     try {
       const { data, error } = await supabase
-        .from('Projects')
+        .from('projects')
         .select()
         .eq('client_id', clientId);
 
@@ -99,7 +99,7 @@ export class ProjectsService {
   async update(id: string, dto: UpdateProjectDto) {
     try {
       const { error } = await supabase
-        .from('Projects')
+        .from('projects')
         .upsert({
           id,
           client_id: dto.clientId,
@@ -129,7 +129,7 @@ export class ProjectsService {
   async remove(id: string) {
     try {
       const { error } = await supabase
-        .from('Projects')
+        .from('projects')
         .delete()
         .eq('id', id);
 

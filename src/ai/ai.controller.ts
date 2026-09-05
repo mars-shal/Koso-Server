@@ -24,7 +24,7 @@ export class AiController {
     let milestoneContext = '';
     if (dto.projectId) {
       const { data, error } = await supabase
-        .from('Milestones')
+        .from('milestones')
         .select()
         .eq('project_id', dto.projectId);
       if (error) {

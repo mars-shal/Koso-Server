@@ -10,7 +10,7 @@ export class TransactionsService {
   async create(dto: CreateTransactionDto) {
     try {
       const { error } = await supabase
-        .from('Transactions')
+        .from('transactions')
         .upsert({
           payment_link_id: dto.paymentLinkId,
           payer_name: dto.payerName,
@@ -39,7 +39,7 @@ export class TransactionsService {
   async findAll() {
     try {
       const { data, error } = await supabase
-        .from('Transactions')
+        .from('transactions')
         .select();
 
       if (error) {
@@ -58,7 +58,7 @@ export class TransactionsService {
   async findOne(id: string) {
     try {
       const { data, error } = await supabase
-        .from('Transactions')
+        .from('transactions')
         .select()
         .eq('id', id)
         .single();
@@ -79,7 +79,7 @@ export class TransactionsService {
   async findByPaymentLinkId(paymentLinkId: string) {
     try {
       const { data, error } = await supabase
-        .from('Transactions')
+        .from('transactions')
         .select()
         .eq('payment_link_id', paymentLinkId);
 
@@ -99,7 +99,7 @@ export class TransactionsService {
   async findByStatus(status: string) {
     try {
       const { data, error } = await supabase
-        .from('Transactions')
+        .from('transactions')
         .select()
         .eq('status', status);
 
@@ -119,7 +119,7 @@ export class TransactionsService {
   async update(id: string, dto: UpdateTransactionDto) {
     try {
       const { error } = await supabase
-        .from('Transactions')
+        .from('transactions')
         .upsert({
           id,
           payment_link_id: dto.paymentLinkId,
@@ -149,7 +149,7 @@ export class TransactionsService {
   async remove(id: string) {
     try {
       const { error } = await supabase
-        .from('Transactions')
+        .from('transactions')
         .delete()
         .eq('id', id);
 

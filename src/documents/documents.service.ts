@@ -31,7 +31,7 @@ export class DocumentsService {
       const fileUrl = urlData.publicUrl;
 
       const { error: dbError } = await supabase
-        .from('Documents')
+        .from('documents')
         .upsert({
           client_id: dto.clientId,
           project_id: dto.projectId,
@@ -58,7 +58,7 @@ export class DocumentsService {
   async create(dto: CreateDocumentDto) {
     try {
       const { error } = await supabase
-        .from('Documents')
+        .from('documents')
         .upsert({
           client_id: dto.clientId,
           project_id: dto.projectId,
@@ -85,7 +85,7 @@ export class DocumentsService {
   async findAll() {
     try {
       const { data, error } = await supabase
-        .from('Documents')
+        .from('documents')
         .select();
 
       if (error) {
@@ -104,7 +104,7 @@ export class DocumentsService {
   async findOne(id: string) {
     try {
       const { data, error } = await supabase
-        .from('Documents')
+        .from('documents')
         .select()
         .eq('id', id)
         .single();
@@ -125,7 +125,7 @@ export class DocumentsService {
   async findByClientId(clientId: string) {
     try {
       const { data, error } = await supabase
-        .from('Documents')
+        .from('documents')
         .select()
         .eq('client_id', clientId);
 
@@ -145,7 +145,7 @@ export class DocumentsService {
   async findByProjectId(projectId: string) {
     try {
       const { data, error } = await supabase
-        .from('Documents')
+        .from('documents')
         .select()
         .eq('project_id', projectId);
 
@@ -165,7 +165,7 @@ export class DocumentsService {
   async findByType(type: string) {
     try {
       const { data, error } = await supabase
-        .from('Documents')
+        .from('documents')
         .select()
         .eq('type', type);
 
@@ -185,7 +185,7 @@ export class DocumentsService {
   async update(id: string, dto: UpdateDocumentDto) {
     try {
       const { error } = await supabase
-        .from('Documents')
+        .from('documents')
         .upsert({
           id,
           client_id: dto.clientId,
@@ -213,7 +213,7 @@ export class DocumentsService {
   async remove(id: string) {
     try {
       const { error } = await supabase
-        .from('Documents')
+        .from('documents')
         .delete()
         .eq('id', id);
 

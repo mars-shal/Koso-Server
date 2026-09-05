@@ -10,7 +10,7 @@ export class ClientsService {
   async create(dto: CreateClientDto) {
     try {
       const { error } = await supabase
-        .from('Clients')
+        .from('clients')
         .upsert({
           email: dto.email,
           first_name: dto.first_name,
@@ -35,7 +35,7 @@ export class ClientsService {
   async findAll() {
     try {
       const { data, error } = await supabase
-        .from('Clients')
+        .from('clients')
         .select();
 
       if (error) {
@@ -54,7 +54,7 @@ export class ClientsService {
   async findOne(email: string) {
     try {
       const { data, error } = await supabase
-        .from('Clients')
+        .from('clients')
         .select()
         .eq('email', email)
         .single();
@@ -79,7 +79,7 @@ export class ClientsService {
 
     try {
       const { error } = await supabase
-        .from('Clients')
+        .from('clients')
         .upsert({
           email: dto.email,
           first_name: dto.first_name,
@@ -104,7 +104,7 @@ export class ClientsService {
   async remove(email: string) {
     try {
       const { error } = await supabase
-        .from('Clients')
+        .from('clients')
         .delete()
         .eq('email', email);
 

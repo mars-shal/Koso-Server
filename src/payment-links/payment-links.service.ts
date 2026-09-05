@@ -10,7 +10,7 @@ export class PaymentLinksService {
   async create(dto: CreatePaymentLinkDto) {
     try {
       const { error } = await supabase
-        .from('PaymentLinks')
+        .from('paymentlinks')
         .upsert({
           type: dto.type,
           linked_client_id: dto.linkedClientId,
@@ -39,7 +39,7 @@ export class PaymentLinksService {
   async findAll() {
     try {
       const { data, error } = await supabase
-        .from('PaymentLinks')
+        .from('paymentlinks')
         .select();
 
       if (error) {
@@ -58,7 +58,7 @@ export class PaymentLinksService {
   async findOne(id: string) {
     try {
       const { data, error } = await supabase
-        .from('PaymentLinks')
+        .from('paymentlinks')
         .select()
         .eq('id', id)
         .single();
@@ -79,7 +79,7 @@ export class PaymentLinksService {
   async findByClientId(clientId: string) {
     try {
       const { data, error } = await supabase
-        .from('PaymentLinks')
+        .from('paymentlinks')
         .select()
         .eq('linked_client_id', clientId);
 
@@ -99,7 +99,7 @@ export class PaymentLinksService {
   async findByProjectId(projectId: string) {
     try {
       const { data, error } = await supabase
-        .from('PaymentLinks')
+        .from('paymentlinks')
         .select()
         .eq('linked_project_id', projectId);
 
@@ -119,7 +119,7 @@ export class PaymentLinksService {
   async findByType(type: string) {
     try {
       const { data, error } = await supabase
-        .from('PaymentLinks')
+        .from('paymentlinks')
         .select()
         .eq('type', type);
 
@@ -139,7 +139,7 @@ export class PaymentLinksService {
   async update(id: string, dto: UpdatePaymentLinkDto) {
     try {
       const { error } = await supabase
-        .from('PaymentLinks')
+        .from('paymentlinks')
         .upsert({
           id,
           type: dto.type,
@@ -169,7 +169,7 @@ export class PaymentLinksService {
   async remove(id: string) {
     try {
       const { error } = await supabase
-        .from('PaymentLinks')
+        .from('paymentlinks')
         .delete()
         .eq('id', id);
 

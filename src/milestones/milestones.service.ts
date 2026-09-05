@@ -10,7 +10,7 @@ export class MilestonesService {
   async create(dto: CreateMilestoneDto) {
     try {
       const { error } = await supabase
-        .from('Milestones')
+        .from('milestones')
         .upsert({
           project_id: dto.projectId,
           name: dto.name,
@@ -36,7 +36,7 @@ export class MilestonesService {
   async findAll() {
     try {
       const { data, error } = await supabase
-        .from('Milestones')
+        .from('milestones')
         .select();
 
       if (error) {
@@ -55,7 +55,7 @@ export class MilestonesService {
   async findOne(id: string) {
     try {
       const { data, error } = await supabase
-        .from('Milestones')
+        .from('milestones')
         .select()
         .eq('id', id)
         .single();
@@ -76,7 +76,7 @@ export class MilestonesService {
   async findByProjectId(projectId: string) {
     try {
       const { data, error } = await supabase
-        .from('Milestones')
+        .from('milestones')
         .select()
         .eq('project_id', projectId);
 
@@ -96,7 +96,7 @@ export class MilestonesService {
   async update(id: string, dto: UpdateMilestoneDto) {
     try {
       const { error } = await supabase
-        .from('Milestones')
+        .from('milestones')
         .upsert({
           id,
           project_id: dto.projectId,
@@ -123,7 +123,7 @@ export class MilestonesService {
   async remove(id: string) {
     try {
       const { error } = await supabase
-        .from('Milestones')
+        .from('milestones')
         .delete()
         .eq('id', id);
 

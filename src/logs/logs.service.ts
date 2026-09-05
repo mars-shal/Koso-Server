@@ -9,7 +9,7 @@ export class LogsService {
   async create(dto: CreateLogDto) {
     try {
       const { error } = await supabase
-        .from('Logs')
+        .from('logs')
         .upsert({
           client_id: dto.clientId,
           project_id: dto.projectId,
@@ -35,7 +35,7 @@ export class LogsService {
   async findAll() {
     try {
       const { data, error } = await supabase
-        .from('Logs')
+        .from('logs')
         .select();
 
       if (error) {
@@ -54,7 +54,7 @@ export class LogsService {
   async findOne(id: string) {
     try {
       const { data, error } = await supabase
-        .from('Logs')
+        .from('logs')
         .select()
         .eq('id', id)
         .single();
@@ -75,7 +75,7 @@ export class LogsService {
   async findByClientId(clientId: string) {
     try {
       const { data, error } = await supabase
-        .from('Logs')
+        .from('logs')
         .select()
         .eq('client_id', clientId);
 
@@ -95,7 +95,7 @@ export class LogsService {
   async remove(id: string) {
     try {
       const { error } = await supabase
-        .from('Logs')
+        .from('logs')
         .delete()
         .eq('id', id);
 
