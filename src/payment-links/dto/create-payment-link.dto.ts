@@ -6,5 +6,5 @@ export class CreatePaymentLinkDto {
   amount?: number;
   currency: string;
   status: 'Active' | 'Inactive';
-  url: string;
+  url?: string;
 }

@@ -5,7 +5,7 @@ const logger = new Logger();
 
 
 class PaymentUtility {
-  private GateWay_Url: string = "https://api.paystack.co/transaction/"
+  private GateWay_Url: string = "https://api.paystack.co/"
 
   private async makeRequest(url: string, method: string, data?: any): Promise<any> {
     try {
@@ -30,7 +30,9 @@ class PaymentUtility {
   // This is Use for donations and onetime payments not suitable for invoices
   public async paymentPage(paymentPage: PaymentPage): Promise<any> {
     const { name, amount, description } = paymentPage;
-    const response = await this.makeRequest("/page", "POST", { name, amount, description });
+    const body: Record<string, unknown> = { name, description };
+    if (amount) body.amount = amount;
+    const response = await this.makeRequest("page", "POST", body);
     if (response.data) {
       const slug = response?.data?.slug;
       logger.info("Payment page created", slug);
@@ -42,8 +44,15 @@ class PaymentUtility {
 
   //This is used for creating payment requests for invoices 
   public async paymentRequests(paymentRequest: PaymentRequest): Promise<any> {
-    const { amount, description, customerId, dueDate, sendNotification } = paymentRequest;
-    const response = await this.makeRequest("paymentrequest", "POST", { amount, description, customerId, dueDate, sendNotification });
+const { amount, description, customerId, dueDate, sendNotification } = paymentRequest;
+    const body: Record<string, unknown> = {
+      amount,
+      description,
+      customer: customerId,
+      send_notification: sendNotification ?? false,
+    };
+    if (dueDate) body.due_date = dueDate;
+    const response = await this.makeRequest("paymentrequest", "POST", body);
     if (response.data) {
       logger.info("Payment request created", response.data);
       return response.data;

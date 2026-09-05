@@ -24,7 +24,7 @@ export interface Customer {
 
 export class PaymentUtility {
   private logger = new Logger(PaymentUtility.name);
-  private GateWay_Url: string = "https://api.paystack.co/transaction/";
+  private GateWay_Url: string = "https://api.paystack.co/";
 
   private async makeRequest(url: string, method: string, data?: any): Promise<any> {
     try {
@@ -47,7 +47,9 @@ export class PaymentUtility {
 
   public async paymentPage(paymentPage: PaymentPage): Promise<any> {
     const { name, amount, description } = paymentPage;
-    const response = await this.makeRequest("/page", "POST", { name, amount, description });
+    const body: Record<string, unknown> = { name, description };
+    if (amount) body.amount = amount;
+    const response = await this.makeRequest("page", "POST", body);
     if (response.data) {
       const slug = response?.data?.slug;
       this.logger.log(`Payment page created: ${slug}`);
@@ -59,7 +61,14 @@ export class PaymentUtility {
 
   public async paymentRequests(paymentRequest: PaymentRequest): Promise<any> {
     const { amount, description, customerId, dueDate, sendNotification } = paymentRequest;
-    const response = await this.makeRequest("paymentrequest", "POST", { amount, description, customerId, dueDate, sendNotification });
+    const body: Record<string, unknown> = {
+      amount,
+      description,
+      customer: customerId,
+      send_notification: sendNotification ?? false,
+    };
+    if (dueDate) body.due_date = dueDate;
+    const response = await this.makeRequest("paymentrequest", "POST", body);
     if (response.data) {
       this.logger.log("Payment request created");
       return response.data;

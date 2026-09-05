@@ -1,14 +1,20 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { supabase } from '../database/supabase.js';
+import PaymentUtility from '../database/payment-utility.js';
 import { CreatePaymentLinkDto } from './dto/create-payment-link.dto.js';
 import { UpdatePaymentLinkDto } from './dto/update-payment-link.dto.js';
+
+const FALLBACK_CUSTOMER_EMAIL = 'koso+ietorobong@gmail.com';
 
 @Injectable()
 export class PaymentLinksService {
   private readonly logger = new Logger(PaymentLinksService.name);
+  private readonly paystack = new PaymentUtility();
 
   async create(dto: CreatePaymentLinkDto) {
     try {
+      const url = await this.buildPaymentUrl(dto);
+
       const { error } = await supabase
         .from('paymentlinks')
         .upsert({
@@ -19,7 +25,7 @@ export class PaymentLinksService {
           amount: dto.amount,
           currency: dto.currency,
           status: dto.status,
-          url: dto.url,
+          url,
         });
 
       if (error) {
@@ -28,12 +34,75 @@ export class PaymentLinksService {
       }
 
       this.logger.log(`Payment link created: ${dto.linkedLabel}`);
-      return { success: true, label: dto.linkedLabel };
+      return { success: true, label: dto.linkedLabel, url };
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       this.logger.error(`Create payment link error: ${error}`);
       throw new BadRequestException('Failed to create payment link');
     }
+  }
+
+  private async buildPaymentUrl(dto: CreatePaymentLinkDto): Promise<string> {
+    if (dto.type === 'Invoice') {
+      if (!dto.amount || dto.amount <= 0) {
+        throw new BadRequestException('Invoice payment links require an amount');
+      }
+
+      const client = dto.linkedClientId ? await this.findClient(dto.linkedClientId) : null;
+      const customerEmail = client?.email || FALLBACK_CUSTOMER_EMAIL;
+
+      const customer = await this.paystack.createCustomer({
+        email: customerEmail,
+        first_name: client?.first_name || '',
+        last_name: client?.last_name || '',
+        phone: client?.phone || '',
+      });
+      const customerCode = customer?.customer_code;
+      if (!customerCode) {
+        throw new BadRequestException('Failed to create Paystack customer');
+      }
+
+      const paymentRequest = await this.paystack.paymentRequests({
+        amount: Math.round(dto.amount * 100),
+        description: dto.linkedLabel,
+        customerId: customerCode,
+        dueDate: '',
+        sendNotification: false,
+      });
+      const requestCode = paymentRequest?.request_code;
+      if (!requestCode) {
+        throw new BadRequestException('Failed to create Paystack payment request');
+      }
+
+      return `https://paystack.com/pay/${requestCode}`;
+    }
+
+    const slug = await this.paystack.paymentPage({
+      name: dto.linkedLabel,
+      amount: dto.amount ? Math.round(dto.amount * 100) : 0,
+      description: dto.linkedLabel,
+    });
+    if (!slug) {
+      throw new BadRequestException('Failed to create Paystack payment page');
+    }
+
+    return `https://paystack.com/pay/${slug}`;
+  }
+
+  private async findClient(emailOrId: string) {
+    const { data: byEmail } = await supabase
+      .from('clients')
+      .select('email, first_name, last_name, phone')
+      .eq('email', emailOrId)
+      .maybeSingle();
+    if (byEmail) return byEmail;
+
+    const { data: byId } = await supabase
+      .from('clients')
+      .select('email, first_name, last_name, phone')
+      .eq('id', emailOrId)
+      .maybeSingle();
+    return byId;
   }
 
   async findAll() {

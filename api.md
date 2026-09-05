@@ -1,8 +1,7 @@
 # Koso API Reference
 
 Base URL: `https://koso-server-1.onrender.com`
-
-> Local development: use `http://localhost:3149` for the same endpoints.
+.
 
 All responses are JSON. Errors return `{ "statusCode": number, "message": string }`.
 
@@ -535,14 +534,21 @@ POST /payment-links
   "linkedLabel": "Koso App - 50% Deposit",
   "amount": 250000,
   "currency": "NGN",
-  "status": "Active",
-  "url": "https://paystack.com/pay/abc123"
+  "status": "Active"
 }
 ```
 **`type` values:** `"Invoice"` | `"Donation"`
 **`status` values:** `"Active"` | `"Inactive"`
 
-**Response:** `{ "success": true, "label": "Koso App - 50% Deposit" }`
+`amount` is in **naira** — the server converts to kobo (×100) for Paystack.
+`url` is **optional in the body**; the server generates it from Paystack:
+
+- `type: "Donation"` → creates a Paystack **payment page** → `url` = `https://paystack.com/pay/{slug}`. Amount optional (any-amount page when omitted).
+- `type: "Invoice"` → creates a Paystack **customer** from the linked client's `email`/`first_name`/`last_name`/`phone` (falls back to `koso+ietorobong@gmail.com` when no client/email exists), then a Paystack **payment request** → `url` = `https://paystack.com/pay/{PRQ_code}`. `amount` is required (400 otherwise).
+
+If the Paystack call fails, the whole request fails — nothing is saved to Supabase.
+
+**Response:** `{ "success": true, "label": "Koso App - 50% Deposit", "url": "https://paystack.com/pay/PRQ_4j23kasdf" }`
 
 ---
 
