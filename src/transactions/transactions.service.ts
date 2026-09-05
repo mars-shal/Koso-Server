@@ -120,8 +120,7 @@ export class TransactionsService {
     try {
       const { error } = await supabase
         .from('transactions')
-        .upsert({
-          id,
+        .update({
           payment_link_id: dto.paymentLinkId,
           payer_name: dto.payerName,
           payer_email: dto.payerEmail,
@@ -130,7 +129,8 @@ export class TransactionsService {
           date: dto.date,
           status: dto.status,
           gateway_ref: dto.gatewayRef,
-        });
+        })
+        .eq('id', id);
 
       if (error) {
         this.logger.error(`Update transaction failed: ${error.message}`);

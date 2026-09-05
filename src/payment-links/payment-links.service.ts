@@ -140,8 +140,7 @@ export class PaymentLinksService {
     try {
       const { error } = await supabase
         .from('paymentlinks')
-        .upsert({
-          id,
+        .update({
           type: dto.type,
           linked_client_id: dto.linkedClientId,
           linked_project_id: dto.linkedProjectId,
@@ -150,7 +149,8 @@ export class PaymentLinksService {
           currency: dto.currency,
           status: dto.status,
           url: dto.url,
-        });
+        })
+        .eq('id', id);
 
       if (error) {
         this.logger.error(`Update payment link failed: ${error.message}`);

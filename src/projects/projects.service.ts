@@ -100,8 +100,7 @@ export class ProjectsService {
     try {
       const { error } = await supabase
         .from('projects')
-        .upsert({
-          id,
+        .update({
           client_id: dto.clientId,
           name: dto.name,
           description: dto.description,
@@ -110,7 +109,8 @@ export class ProjectsService {
           paid_amount: dto.paidAmount,
           start_date: dto.startDate,
           end_date: dto.endDate,
-        });
+        })
+        .eq('id', id);
 
       if (error) {
         this.logger.error(`Update project failed: ${error.message}`);

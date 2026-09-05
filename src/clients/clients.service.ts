@@ -82,14 +82,14 @@ export class ClientsService {
     try {
       const { error } = await supabase
         .from('clients')
-        .upsert({
-          email: dto.email,
+        .update({
           first_name: dto.first_name,
           last_name: dto.last_name,
           phone: dto.phone,
           type: dto.type,
           status: dto.status,
-        });
+        })
+        .eq('email', dto.email);
 
       if (error) {
         this.logger.error(`Update client failed: ${error.message}`);

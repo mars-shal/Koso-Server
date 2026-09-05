@@ -186,15 +186,15 @@ export class DocumentsService {
     try {
       const { error } = await supabase
         .from('documents')
-        .upsert({
-          id,
+        .update({
           client_id: dto.clientId,
           project_id: dto.projectId,
           name: dto.name,
           type: dto.type,
           signed: dto.signed,
           file_url: dto.fileUrl,
-        });
+        })
+        .eq('id', id);
 
       if (error) {
         this.logger.error(`Update document failed: ${error.message}`);

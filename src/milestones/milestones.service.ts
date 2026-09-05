@@ -97,14 +97,14 @@ export class MilestonesService {
     try {
       const { error } = await supabase
         .from('milestones')
-        .upsert({
-          id,
+        .update({
           project_id: dto.projectId,
           name: dto.name,
           due_date: dto.dueDate,
           status: dto.status,
           description: dto.description,
-        });
+        })
+        .eq('id', id);
 
       if (error) {
         this.logger.error(`Update milestone failed: ${error.message}`);

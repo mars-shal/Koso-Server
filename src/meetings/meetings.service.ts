@@ -97,14 +97,14 @@ export class MeetingsService {
     try {
       const { error } = await supabase
         .from('meetings')
-        .upsert({
-          id,
+        .update({
           client_id: dto.clientId,
           project_id: dto.projectId,
           date: dto.date,
           summary: dto.summary,
           duration: dto.duration,
-        });
+        })
+        .eq('id', id);
 
       if (error) {
         this.logger.error(`Update meeting failed: ${error.message}`);
