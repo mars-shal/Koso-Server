@@ -1,6 +1,8 @@
 # Koso API Reference
 
-Base URL: `http://localhost:3149`
+Base URL: `https://koso-server-1.onrender.com`
+
+> Local development: use `http://localhost:3149` for the same endpoints.
 
 All responses are JSON. Errors return `{ "statusCode": number, "message": string }`.
 
