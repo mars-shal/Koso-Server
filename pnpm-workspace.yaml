@@ -1,0 +1,6 @@
+allowBuilds:
+  '@google/genai': true
+  esbuild: false
+  protobufjs: true
+minimumReleaseAgeExclude:
+  - '@supabase/server@1.5.3'

@@ -1,0 +1,5 @@
+# {{LR-0001}} Established: The two-layer backend architecture
+
+The Koso server has two parallel layers: the original framework-free `controllers/` (plain classes wrapping the `Database` class, no HTTP routes, effectively legacy) and the real NestJS application under `src/` (modules of controller + service + DTO, which `main.ts` actually boots). Understanding this split — and that NestJS's `@Module` / `@Controller` / `@Service` / DTO ceremony is a thin wrapper around one-liner Supabase calls — is the foundation for any future backend work.
+
+*Implications*: New endpoints should go in `src/<domain>/` as a module, registered in `app.module.ts`. The `controllers/` layer is not worth extending (its `Database.delete()` is hard-coded to delete by email, and errors are logged rather than thrown). The `payments/` module is the one exception where the service wraps the external Paystack `PaymentUtility` instead of a Supabase table.

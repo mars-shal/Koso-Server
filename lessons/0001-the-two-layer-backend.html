@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 1 — The Two-Layer Backend</title>
+  <style>
+    /* Tufte-inspired, clean, readable */
+    :root {
+      --ink: #111;
+      --muted: #555;
+      --accent: #536251;
+      --rule: #ddd;
+      --code-bg: #f6f7f5;
+      --serif: Georgia, 'Times New Roman', serif;
+      --sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      max-width: 46rem;
+      margin: 3rem auto;
+      padding: 0 1.25rem 6rem;
+      font-family: var(--serif);
+      font-size: 18px;
+      line-height: 1.6;
+      color: var(--ink);
+    }
+    h1, h2, h3, .tag { font-family: var(--sans); }
+    h1 { font-size: 1.9rem; margin-bottom: .2rem; }
+    .tag {
+      font-size: .75rem; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--accent); font-weight: 600;
+    }
+    h2 { font-size: 1.3rem; margin-top: 2.6rem; border-bottom: 1px solid var(--rule); padding-bottom: .3rem; }
+    h3 { font-size: 1.05rem; }
+    p { margin: 1rem 0; }
+    ul, ol { padding-left: 1.4rem; }
+    li { margin: .4rem 0; }
+    code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+      font-size: .86em; background: var(--code-bg);
+      padding: .12em .35em; border-radius: 3px;
+    }
+    pre {
+      background: var(--code-bg); padding: 1rem 1.2rem;
+      border-left: 3px solid var(--accent); overflow-x: auto;
+      font-size: .86rem; line-height: 1.5;
+    }
+    pre code { background: none; padding: 0; }
+    .callout {
+      background: #f4f2ec; border-left: 4px solid var(--accent);
+      padding: .9rem 1.2rem; margin: 1.6rem 0; border-radius: 2px;
+      font-size: .96rem;
+    }
+    .callout strong { font-family: var(--sans); display: block; margin-bottom: .3rem; }
+    a { color: var(--accent); text-decoration-color: #b7c2b2; }
+    a:hover { text-decoration-color: var(--accent); }
+    .quiz { border: 1px solid var(--rule); border-radius: 6px; padding: 1.2rem 1.4rem; margin: 2rem 0; }
+    .quiz summary { font-family: var(--sans); font-weight: 600; cursor: pointer; }
+    .quiz ul { margin-top: .6rem; }
+    footer { margin-top: 4rem; border-top: 1px solid var(--rule); padding-top: 1rem; font-size: .9rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <p class="tag">Lesson 1 · Koso Backend</p>
+  <h1>The Two-Layer Backend</h1>
+  <p>Koso's server has two layers that talk to the same two databases. Understanding the split is the single most important idea in this whole project.</p>
+
+  <h2>Why are there two layers at all?</h2>
+  <p>
+    When we started, the code lived in <code>controllers/</code> as plain TypeScript
+    classes — no framework. Then NestJS was added as the actual HTTP framework, which
+    requires files to live under <code>src/</code>. So we ended up with both:
+    the original hand-rolled controllers and the "real" NestJS modules.
+  </p>
+  <p>
+    NestJS is what actually handles incoming HTTP requests. The <code>controllers/</code>
+    folder is the old layer — it still exists because it was already written, and it can
+    be reused by anything that doesn't go through NestJS. But all the live routes come
+    from <code>src/</code>.
+  </p>
+
+  <h2>The mental model</h2>
+  <p>Both layers, at their core, do the same thing:</p>
+  <pre>incoming HTTP request
+        │
+        ▼
+   [Route / Decorator]      ← "this URL maps to this method"
+        │
+        ▼
+   [Controller method]      ← "this method needs inputs from the URL/body"
+        │
+        ▼
+   [Service method]         ← "do the actual work"
+        │
+        ▼
+   [Supabase / Paystack]    ← "the real database / payment API"</pre>
+
+  <p>
+    The <strong>controller</strong> is a thin layer — it only knows about HTTP.
+    The <strong>service</strong> is where the logic actually lives — it talks to Supabase.
+    This separation is the heart of NestJS: <em>controllers handle HTTP, services handle data</em>.
+  </p>
+
+  <h2>The two layers side by side</h2>
+  <table style="width:100%; border-collapse:collapse; font-size:.92rem; margin:1.4rem 0;">
+    <thead>
+      <tr style="border-bottom:2px solid var(--ink); text-align:left;">
+        <th style="padding:.4rem .6rem;">Aspect</th>
+        <th style="padding:.4rem .6rem;">controllers/</th>
+        <th style="padding:.4rem .6rem;">src/ (NestJS)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom:1px solid var(--rule);">
+        <td style="padding:.4rem .6rem;">Style</td>
+        <td style="padding:.4rem .6rem;">Plain classes, no decorators</td>
+        <td style="padding:.4rem .6rem;">Decorators (<code>@Controller</code>, <code>@Injectable</code>)</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--rule);">
+        <td style="padding:.4rem .6rem;">HTTP routes</td>
+        <td style="padding:.4rem .6rem;">None — you'd call methods directly</td>
+        <td style="padding:.4rem .6rem;">Yes — decorators map URLs to methods</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--rule);">
+        <td style="padding:.4rem .6rem;">DB access</td>
+        <td style="padding:.4rem .6rem;">Wraps <code>Database</code> class</td>
+        <td style="padding:.4rem .6rem;">Calls <code>supabase</code> directly</td>
+      </tr>
+      <tr>
+        <td style="padding:.4rem .6rem;">Used by the running server?</td>
+        <td style="padding:.4rem .6rem;">Not directly — legacy</td>
+        <td style="padding:.4rem .6rem;">Yes — it's what <code>main.ts</code> boots</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>How NestJS knows the modules exist</h2>
+  <p>
+    Everything is wired together in <code>src/app.module.ts</code>. When the server starts,
+    NestJS reads this one file to learn the full "map" of your app:
+  </p>
+  <pre>@Module({
+  imports: [
+    ClientsModule, ProjectsModule, MeetingsModule,
+    LogsModule, PaymentsModule, DocumentsModule,
+    MilestonesModule, PaymentLinksModule, TransactionsModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}</pre>
+  <p>
+    If you create a new module and forget to add it here, NestJS will never mount its
+    routes. This file is the front door.
+  </p>
+
+  <h2>The flow for a real route: <code>GET /clients</code></h2>
+  <ol>
+    <li><code>main.ts</code> boots <code>AppModule</code>.</li>
+    <li><code>app.module.ts</code> imports <code>ClientsModule</code>.</li>
+    <li><code>ClientsModule</code> registers <code>ClientsController</code> (the routes).</li>
+    <li>A browser hits <code>GET /clients</code> → NestJS matches it to <code>@Get() findAll()</code> in the controller.</li>
+    <li>The controller calls <code>this.clientsService.findAll()</code>.</li>
+    <li>The service runs <code>supabase.from('Clients').select()</code> and returns the rows.</li>
+    <li>NestJS turns that into a JSON response.</li>
+  </ol>
+
+  <div class="callout">
+    <strong>Key insight</strong>
+    The bulk of the "work" is a one-liner on Supabase. The controller + service exist to
+    define <em>how</em> and <em>when</em> that one-liner runs. Don't overestimate the
+    complexity — most services are thin wrappers over a Supabase call.
+  </div>
+
+  <h2>How each piece fits in a file</h2>
+  <p>Here's a real service method from <code>src/clients/clients.service.ts</code>:</p>
+  <pre>async findAll() {
+  const { data, error } = await supabase.from('Clients').select();
+  if (error) throw new BadRequestException(error.message);
+  return data || [];
+}</pre>
+  <p>
+    NestJS (via <code>@nestjs/common</code>) gives us the <code>BadRequestException</code>
+    so a failed DB call returns a clean 400 HTTP error instead of crashing.
+  </p>
+
+  <h2>How to read a DTO</h2>
+  <p>
+    A <strong>DTO</strong> (Data Transfer Object) is just a TypeScript class describing the
+    shape of the data a request body must have. It's validation and documentation in one.
+  </p>
+  <pre>// src/clients/dto/create-client.dto.ts
+export class CreateClientDto {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+}</pre>
+  <p>
+    The service takes one of these as input. If you ever change a table's columns, the DTO
+    tells you exactly what the API expects — they should match.
+  </p>
+
+  <h2>Your turn — 3 quick checks</h2>
+  <div class="quiz">
+    <details>
+      <summary>Quiz: What does the controller know that the service does not?</summary>
+      <ul>
+        <li><strong>A:</strong> The Supabase table name</li>
+        <li><strong>B:</strong> The HTTP route and request inputs</li>
+        <li><strong>C:</strong> How to format currency</li>
+      </ul>
+      <p>Answer: <strong>B.</strong> The controller owns the HTTP concerns (URL, params, body). The service owns the data access.</p>
+    </details>
+  </div>
+  <div class="quiz">
+    <details>
+      <summary>Quiz: You add a new module <code>UsersModule</code>. What else must you touch for its routes to work?</summary>
+      <ul>
+        <li><strong>A:</strong> Nothing — it's automatic</li>
+        <li><strong>B:</strong> <code>src/app.module.ts</code> — add it to imports</li>
+        <li><strong>C:</strong> <code>main.ts</code> — add it there</li>
+      </ul>
+      <p>Answer: <strong>B.</strong> <code>app.module.ts</code> is the wiring map. Without it, the routes never mount.</p>
+    </details>
+  </div>
+  <div class="quiz">
+    <details>
+      <summary>Quiz: If <code>supabase.from('Clients').select()</code> succeeds, what does the service return?</summary>
+      <ul>
+        <li><strong>A:</strong> The raw <code>{ data, error }</code> object</li>
+        <li><strong>B:</strong> Just <code>data</code> (or an empty array)</li>
+        <li><strong>C:</strong> Nothing — it throws always</li>
+      </ul>
+      <p>Answer: <strong>B.</strong> The service destructures <code>{ data, error }</code> and returns <code>data || []</code>.</p>
+    </details>
+  </div>
+
+  <h2>Go deeper</h2>
+  <p>
+    Read the full walkthrough in
+    <a href="../reference/koso-backend-layout.md">reference/koso-backend-layout.md</a>
+    and the glossary at
+    <a href="/home/marshall/Documents/projects/InProgress/koso_server/reference/GLOSSARY.md">reference/GLOSSARY.md</a>.
+    For the canonical source, the official
+    <a href="https://docs.nestjs.com/controllers">NestJS Controllers docs</a> and
+    <a href="https://docs.nestjs.com/modules">Modules docs</a> are the most high-trust resources.
+  </p>
+
+  <div class="callout">
+    <strong>Ask me anything</strong>
+    This lesson is a starting point. If any part feels unclear — why the legacy layer exists,
+    how DI works, what <code>@Body</code> does — ask your agent directly. The agent is your
+    teacher and can walk through any file in this project with you.
+  </div>
+
+  <footer>
+    Koso Backend · Lesson 1 of N · Follow-up questions encouraged.
+  </footer>
+</body>
+</html>
