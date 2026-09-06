@@ -6,5 +6,5 @@ export class CreateTransactionDto {
   currency: string;
   date: string;
   status: 'Succeeded' | 'Pending' | 'Failed' | 'Refunded';
-  gatewayRef: string;
+  gatewayRef?: string;
 }

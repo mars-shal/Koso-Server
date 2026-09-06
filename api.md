@@ -283,7 +283,7 @@ POST /documents
 ```
 POST /documents/upload
 ```
-Uploads a file to Supabase Storage (default bucket `documents`) and saves the document row with the generated public URL.
+Uploads a file to the **`Documents`** bucket in Supabase Storage and saves the document row with a **signed URL** (expires after 7 days). Signed URLs are re-generated automatically on every document read (`GET /documents`, `GET /documents/:id`, client/project/type filters), so `file_url` is always fresh when returned by this API — but a URL cached client-side will go stale after 7 days.
 
 **Body:**
 ```json
@@ -296,16 +296,16 @@ Uploads a file to Supabase Storage (default bucket `documents`) and saves the do
   "contentType": "application/pdf"
 }
 ```
-**Optional fields:** `fileName` (storage filename, defaults to `name`), `signed` (`"Signed"` | `"Pending"` | `"N/A"`, defaults `"N/A"`), `bucket` (defaults to `documents`).
+**Optional fields:** `fileName` (storage filename, defaults to `name`), `signed` (`"Signed"` | `"Pending"` | `"N/A"`, defaults `"N/A"`), `bucket` (defaults to `Documents`).
 
-**Storage path:** `{clientId}/{sanitized-fileName}` in the bucket.
+**Storage path:** `{clientId}/{sanitized-fileName}` in the `Documents` bucket.
 
 **Response:**
 ```json
 {
   "success": true,
   "name": "NDA - March 2025.pdf",
-  "fileUrl": "https://<project>.supabase.co/storage/v1/object/public/documents/client@example.com/NDA-March-2025.pdf"
+  "fileUrl": "https://<project>.supabase.co/storage/v1/object/sign/Documents/client@example.com/NDA-March-2025.pdf?token=..."
 }
 ```
 
@@ -510,7 +510,9 @@ Set this as your webhook URL in the [Paystack Dashboard](https://dashboard.payst
 
 - Verifies the `x-paystack-signature` header (HMAC-SHA512 of the raw body, signed with `PAYSTACK_SECRET_KEY`). Invalid signatures return `401`.
 - Responds to `charge.success` → records/sets a `Transactions` row to `Succeeded`, and `charge.failed` → `Failed`. Updates are idempotent by `gateway_ref` (reference), so Paystack retries won't duplicate rows.
+- Responds to `paymentrequest.success` → marks the matching Invoice payment link as `Paid` (matched by its stored `url` = `https://paystack.com/pay/{request_code}`). Idempotent; `404`-safe when no payment link matches (e.g. requests created outside the app).
 - Amounts are converted from kobo/paise to the base unit (`amount / 100`).
+- Returns synchronously (200/201) — Paystack treats any non-2xx as a failed delivery and retries (test mode: 4 attempts over ~4 hours).
 
 **Response (verify succeeded):**
 ```json
@@ -538,13 +540,13 @@ POST /payment-links
 }
 ```
 **`type` values:** `"Invoice"` | `"Donation"`
-**`status` values:** `"Active"` | `"Inactive"`
+**`status` values:** `"Active"` | `"Inactive"` | `"Paid"` (`"Paid"` is set automatically by the webhook when a Paystack payment request is paid; donations stay `"Active"` — they can be paid many times)
 
 `amount` is in **naira** — the server converts to kobo (×100) for Paystack.
 `url` is **optional in the body**; the server generates it from Paystack:
 
 - `type: "Donation"` → creates a Paystack **payment page** → `url` = `https://paystack.com/pay/{slug}`. Amount optional (any-amount page when omitted).
-- `type: "Invoice"` → creates a Paystack **customer** from the linked client's `email`/`first_name`/`last_name`/`phone` (falls back to `koso+ietorobong@gmail.com` when no client/email exists), then a Paystack **payment request** → `url` = `https://paystack.com/pay/{PRQ_code}`. `amount` is required (400 otherwise).
+- `type: "Invoice"` → creates a Paystack **customer** from the linked client's `email`/`first_name`/`last_name`/`phone` (falls back to `koso+ietorobong@gmail.com` when no client/email exists), then a Paystack **payment request** → `url` = `https://paystack.com/pay/{PRQ_code}`. `amount` is required (400 otherwise). `send_notification` is **on** — Paystack emails the customer their invoice payment link.
 
 If the Paystack call fails, the whole request fails — nothing is saved to Supabase.
 
@@ -598,7 +600,7 @@ DELETE /payment-links/:id
 
 ## Transactions
 
-### Create transaction
+### Create transaction (manual mark-paid)
 ```
 POST /transactions
 ```
@@ -611,11 +613,14 @@ POST /transactions
   "amount": 250000,
   "currency": "NGN",
   "date": "2025-03-15T12:00:00Z",
-  "status": "Succeeded",
-  "gatewayRef": "paystack-ref-abc123"
+  "status": "Succeeded"
 }
 ```
 **`status` values:** `"Succeeded"` | `"Pending"` | `"Failed"` | `"Refunded"`
+
+**`gatewayRef`** (optional) — required only for Paystack-sourced transactions. Omit for manual mark-paid.
+
+**Mark-paid behaviour:** when `status = "Succeeded"` and `paymentLinkId` is provided, the linked payment link is automatically flipped to `Paid` (Invoice type) and its `paid_amount` is bumped by `amount`. This is the home for the "mark paid" UI action. If the column has not been migrated yet (`20260906_add_paid_amount.sql`), the flip still proceeds; only `paid_amount` is skipped.
 
 **Response:** `{ "success": true, "gatewayRef": "paystack-ref-abc123" }`
 
@@ -790,10 +795,10 @@ POST /resume/score
 | `/logs` | `Logs` | `id`, `client_id`, `project_id`, `type`, `message`, `timestamp` |
 | `/documents` | `Documents` | `id`, `client_id`, `project_id`, `name`, `type`, `signed`, `file_url` |
 | `/milestones` | `Milestones` | `id`, `project_id`, `name`, `due_date`, `status`, `description` |
-| `/payment-links` | `PaymentLinks` | `id`, `type`, `linked_client_id`, `linked_project_id`, `linked_label`, `amount`, `url` |
+| `/payment-links` | `PaymentLinks` | `id`, `type`, `linked_client_id`, `linked_project_id`, `linked_label`, `amount`, `paid_amount`, `status`, `url` |
 | `/transactions` | `Transactions` | `id`, `payment_link_id`, `payer_name`, `amount`, `status`, `gateway_ref` |
 | `/payments/*` | Paystack API | External — not stored in Supabase |
-| `/documents/upload` | `Documents` + Supabase Storage | file in bucket `documents` at `{client_id}/{fileName}`, row with `file_url` |
+| `/documents/upload` | `Documents` + Supabase Storage | file in bucket `Documents` at `{client_id}/{fileName}`, row with `file_url` (7-day signed URL, re-signed on read) |
 | `/ai/prd` | `Milestones` (optional context) | Google GenAI — generates markdown PRD |
 | `/ai/pricing` | — | Google GenAI — returns price range quote |
 | `/resume` | `Projects` (source data) | Google GenAI — builds + scores ATS resume |

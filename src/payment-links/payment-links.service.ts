@@ -67,7 +67,7 @@ export class PaymentLinksService {
         description: dto.linkedLabel,
         customerId: customerCode,
         dueDate: '',
-        sendNotification: false,
+        sendNotification: true,
       });
       const requestCode = paymentRequest?.request_code;
       if (!requestCode) {

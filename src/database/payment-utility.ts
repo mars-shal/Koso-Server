@@ -65,7 +65,7 @@ export class PaymentUtility {
       amount,
       description,
       customer: customerId,
-      send_notification: sendNotification ?? false,
+      send_notification: sendNotification ?? true,
     };
     if (dueDate) body.due_date = dueDate;
     const response = await this.makeRequest("paymentrequest", "POST", body);

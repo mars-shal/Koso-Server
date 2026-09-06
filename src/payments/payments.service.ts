@@ -2,10 +2,12 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { supabase } from '../database/supabase.js';
 import PaymentUtility from '../database/payment-utility.js';
+import { applySuccessfulPayment } from '../database/payment-link-accounting.js';
 import { CreatePaymentPageDto, CreatePaymentRequestDto, CreateCustomerDto } from './dto/create-payment.dto.js';
 
 export interface PaystackWebhookData {
   reference?: string;
+  request_code?: string;
   amount?: number;
   currency?: string;
   status?: string;
@@ -52,6 +54,8 @@ export class PaymentsService {
         return this.recordTransaction('Succeeded', payload);
       case 'charge.failed':
         return this.recordTransaction('Failed', payload);
+      case 'paymentrequest.success':
+        return this.markPaymentLinkPaid(payload);
       default:
         this.logger.log(`Unhandled webhook event: ${eventType}`);
         return { success: true, received: eventType };
@@ -74,9 +78,11 @@ export class PaymentsService {
 
     const { data: existing } = await supabase
       .from('transactions')
-      .select('id')
+      .select('id, status')
       .eq('gateway_ref', gatewayRef)
       .maybeSingle();
+
+    const wasAlreadySucceeded = existing?.status === 'Succeeded';
 
     let error: { message: string } | null;
     if (existing?.id) {
@@ -103,7 +109,75 @@ export class PaymentsService {
     }
 
     this.logger.log(`Webhook recorded transaction ${gatewayRef} as ${status}`);
+
+    // Bump the linked payment link's paid_amount only when this transaction
+    // transitions into 'Succeeded' (a re-delivered webhook must not double-count).
+    if (status === 'Succeeded' && !wasAlreadySucceeded && paymentLinkId) {
+      try {
+        const result = await applySuccessfulPayment(paymentLinkId, amount);
+        this.logger.log(
+          `paid_amount bump for link ${paymentLinkId}: matched=${result.matched} updated=${result.updated} paidAmount=${result.paidAmount ?? 'n/a'}`,
+        );
+      } catch (bumpError) {
+        // Accounting must never break the webhook response — Paystack re-delivers on 4xx for hours.
+        this.logger.error(`paid_amount bump failed for link ${paymentLinkId}: ${bumpError}`);
+      }
+    }
+
     return { success: true, reference: gatewayRef, status };
+  }
+
+  private async markPaymentLinkPaid(data: PaystackWebhookData) {
+    const requestCode = data.request_code;
+    if (!requestCode) {
+      this.logger.log('paymentrequest.success without request_code');
+      return { success: true, matched: false, reason: 'missing request_code' };
+    }
+
+    const expectedUrl = `https://paystack.com/pay/${requestCode}`;
+    const { data: link, error: findError } = await supabase
+      .from('paymentlinks')
+      .select('id, status, paid_amount')
+      .eq('type', 'Invoice')
+      .eq('url', expectedUrl)
+      .maybeSingle();
+
+    if (findError) {
+      this.logger.error(`Payment link lookup failed: ${findError.message}`);
+      throw new BadRequestException(findError.message);
+    }
+
+    if (!link) {
+      this.logger.log(`No payment link matches request ${requestCode}`);
+      return { success: true, matched: false };
+    }
+
+    if (link.status === 'Paid') {
+      return { success: true, matched: true, updated: false };
+    }
+
+    const paidAmountNaira = data.amount != null ? Math.round(Number(data.amount) / 100) : undefined;
+
+    try {
+      await applySuccessfulPayment(link.id, paidAmountNaira ?? 0);
+    } catch (bumpError: unknown) {
+      const msg = bumpError instanceof Error ? bumpError.message : String(bumpError);
+      // Not migrated to accept 'Paid' / paid_amount yet: swallow, else a 4xx makes Paystack re-deliver for hours.
+      if (
+        msg.includes('paymentlinks_status_check') ||
+        msg.includes('PGRST204')
+      ) {
+        this.logger.warn(
+          `Payment link ${link.id} could not be updated (migration not applied): ${msg}`,
+        );
+        return { success: true, matched: true, updated: false, reason: 'migration not applied' };
+      }
+      this.logger.error(`Mark payment link paid failed: ${msg}`);
+      throw new BadRequestException(msg);
+    }
+
+    this.logger.log(`Payment link ${link.id} marked Paid (${requestCode})`);
+    return { success: true, matched: true, updated: true, paidAmount: paidAmountNaira ?? 0 };
   }
 
   async createPaymentPage(dto: CreatePaymentPageDto) {

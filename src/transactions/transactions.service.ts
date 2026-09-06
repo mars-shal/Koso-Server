@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { supabase } from '../database/supabase.js';
+import { applySuccessfulPayment } from '../database/payment-link-accounting.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
 import { UpdateTransactionDto } from './dto/update-transaction.dto.js';
 
@@ -25,6 +26,15 @@ export class TransactionsService {
       if (error) {
         this.logger.error(`Create transaction failed: ${error.message}`);
         throw new BadRequestException(error.message);
+      }
+
+      // Manual mark-paid: a Succeeded transaction flips the linked link to 'Paid'
+      // and bumps its paid_amount.
+      if (dto.status === 'Succeeded' && dto.paymentLinkId) {
+        const paid = await applySuccessfulPayment(dto.paymentLinkId, dto.amount);
+        this.logger.log(
+          `mark-paid for link ${dto.paymentLinkId}: matched=${paid.matched} updated=${paid.updated} paidAmount=${paid.paidAmount ?? 'n/a'}`,
+        );
       }
 
       this.logger.log(`Transaction created: ${dto.gatewayRef}`);

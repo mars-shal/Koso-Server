@@ -8,13 +8,15 @@ import { UploadDocumentDto } from './dto/upload-document.dto.js';
 export class DocumentsService {
   private readonly logger = new Logger(DocumentsService.name);
 
+  private readonly SIGNED_URL_TTL_SECONDS = 7 * 24 * 60 * 60;
+
   async upload(dto: UploadDocumentDto) {
     try {
       if (!dto.fileData) {
         throw new BadRequestException('fileData (base64) is required');
       }
 
-      const bucket = dto.bucket || 'documents';
+      const bucket = dto.bucket || 'Documents';
       const storagePath = this.buildStoragePath(dto);
 
       const buffer = Buffer.from(dto.fileData, 'base64');
@@ -27,8 +29,15 @@ export class DocumentsService {
         throw new BadRequestException(error.message);
       }
 
-      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(storagePath);
-      const fileUrl = urlData.publicUrl;
+      const { data: urlData, error: signError } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(storagePath, this.SIGNED_URL_TTL_SECONDS);
+
+      if (signError || !urlData) {
+        this.logger.error(`Sign document URL failed: ${signError?.message}`);
+        throw new BadRequestException(signError?.message || 'Failed to sign document URL');
+      }
+      const fileUrl = urlData.signedUrl;
 
       const { error: dbError } = await supabase
         .from('documents')
@@ -93,7 +102,7 @@ export class DocumentsService {
         throw new BadRequestException(error.message);
       }
 
-      return data || [];
+      return this.withFreshSignedUrls(data || []);
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       this.logger.error(`Fetch documents error: ${error}`);
@@ -114,7 +123,7 @@ export class DocumentsService {
         throw new NotFoundException(`Document with id ${id} not found`);
       }
 
-      return data;
+      return { ...data, file_url: await this.refreshSignedUrl(typeof data.file_url === 'string' ? data.file_url : null) };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       this.logger.error(`Fetch document error: ${error}`);
@@ -134,7 +143,7 @@ export class DocumentsService {
         throw new BadRequestException(error.message);
       }
 
-      return data || [];
+      return this.withFreshSignedUrls(data || []);
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       this.logger.error(`Fetch documents by client error: ${error}`);
@@ -154,7 +163,7 @@ export class DocumentsService {
         throw new BadRequestException(error.message);
       }
 
-      return data || [];
+      return this.withFreshSignedUrls(data || []);
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       this.logger.error(`Fetch documents by project error: ${error}`);
@@ -174,7 +183,7 @@ export class DocumentsService {
         throw new BadRequestException(error.message);
       }
 
-      return data || [];
+      return this.withFreshSignedUrls(data || []);
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       this.logger.error(`Fetch documents by type error: ${error}`);
@@ -229,6 +238,29 @@ export class DocumentsService {
       this.logger.error(`Delete document error: ${error}`);
       throw new BadRequestException('Failed to delete document');
     }
+  }
+
+  private async refreshSignedUrl(fileUrl: string | null): Promise<string | null> {
+    if (!fileUrl || !fileUrl.includes('/storage/v1/object/sign/')) return fileUrl;
+
+    const match = fileUrl.match(/\/storage\/v1\/object\/sign\/([^/]+)\/(.+?)\?token=/);
+    if (!match) return fileUrl;
+
+    const { data, error } = await supabase.storage
+      .from(decodeURIComponent(match[1]))
+      .createSignedUrl(decodeURIComponent(match[2]), this.SIGNED_URL_TTL_SECONDS);
+
+    if (error || !data) return fileUrl;
+    return data.signedUrl;
+  }
+
+  private async withFreshSignedUrls(rows: Record<string, unknown>[]): Promise<Record<string, unknown>[]> {
+    return Promise.all(
+      rows.map(async (row) => {
+        const url = row.file_url;
+        return { ...row, file_url: await this.refreshSignedUrl(typeof url === 'string' ? url : null) };
+      }),
+    );
   }
 
   private buildStoragePath(dto: UploadDocumentDto): string {
